@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Discord OAuth2 Link Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ---------- Alap stílusok ---------- */
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --muted:#94a3b8;
+      --accent1:#7c3aed;
+      --accent2:#06b6d4;
+      --glass: rgba(255,255,255,0.04);
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:'Inter',system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      background: linear-gradient(180deg,#071029 0%, #071022 60%);
+      color:#e6eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:32px;
+    }
+
+    /* ---------- Konténer ---------- */
+    .card{
+      width:100%;
+      max-width:980px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:calc(var(--radius) - 4px);
+      padding:28px;
+      box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+      border: 1px solid rgba(255,255,255,0.03);
+      display:grid;
+      grid-template-columns: 1fr 380px;
+      gap:20px;
+    }
+
+    @media (max-width:900px){
+      .card{grid-template-columns:1fr; padding:20px}
+    }
+
+    h1{margin:0 0 6px 0; font-size:20px}
+    p.lead{margin:0 0 18px 0; color:var(--muted); font-size:13px}
+
+    /* ---------- Form elemek ---------- */
+    .field{margin-bottom:14px}
+    label{display:block; font-size:13px; margin-bottom:6px; color:var(--muted)}
+    input[type=text], .fake-select{
+      width:100%;
+      padding:12px 14px;
+      background:var(--glass);
+      border:1px solid rgba(255,255,255,0.03);
+      border-radius:10px;
+      color:inherit;
+      font-size:14px;
+      outline:none;
+      transition:box-shadow .15s, transform .08s;
+    }
+    input[type=text]:focus, .fake-select:focus{box-shadow:0 6px 18px rgba(12,18,40,0.6);}
+
+    .row{display:flex; gap:12px}
+    .row .field{flex:1}
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:11px 14px;
+      border-radius:10px;
+      border: none;
+      cursor:pointer;
+      font-weight:600;
+      background: linear-gradient(90deg,var(--accent1),var(--accent2));
+      color:white;
+      box-shadow: 0 8px 20px rgba(12,18,40,0.5);
+    }
+    .btn.ghost{
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.06);
+      color:var(--muted);
+      font-weight:600;
+    }
+
+    /* ---------- Permissions custom multi-select ---------- */
+    .multi-wrapper{position:relative}
+    .fake-select{display:flex; align-items:center; justify-content:space-between}
+    .tags{display:flex; gap:8px; flex-wrap:wrap}
+    .tag{background:rgba(255,255,255,0.05); padding:6px 8px; border-radius:8px; font-size:12px}
+
+    .dropdown{
+      position:absolute; right:0; left:0; top:calc(100% + 10px);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:10px; padding:12px; max-height:260px; overflow:auto; z-index:40;
+      border:1px solid rgba(255,255,255,0.02);
+      box-shadow:0 12px 40px rgba(2,6,23,0.6);
+    }
+    .perm-item{display:flex; align-items:center; gap:10px; padding:8px; border-radius:8px}
+    .perm-item:hover{background:rgba(255,255,255,0.01)}
+    .perm-item label{font-size:13px; color:var(--muted)}
+
+    /* ---------- Right panel (preview + actions) ---------- */
+    .right{
+      background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));
+      border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px;
+      border:1px solid rgba(255,255,255,0.02);
+    }
+    .preview{
+      background: rgba(255,255,255,0.02);
+      padding:12px; border-radius:10px; font-size:13px; word-break:break-all; min-height:86px;
+    }
+    .actions{display:flex; gap:8px}
+
+    .note{font-size:13px; color:var(--muted)}
+    .small{font-size:12px; color:var(--muted)}
+
+    footer{margin-top:14px; font-size:13px; color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="card" role="application">
+    <!-- Bal oldali űrlap -->
+    <div>
+      <h1>Discord OAuth2 link generátor</h1>
+      <p class="lead">Töltsd ki az alábbi mezőket, válaszd ki a jogosultságokat, majd kattints a "Generate OAuth2 Link" gombra.</p>
+
+      <!-- BOT CLIENT ID -->
+      <div class="field">
+        <label for="clientId">BOT CLIENT ID</label>
+        <input id="clientId" type="text" placeholder="pl. 123456789012345678" />
+      </div>
+
+      <!-- REDIRECT URI -->
+      <div class="field">
+        <label for="redirectUri">REDIRECT URI</label>
+        <input id="redirectUri" type="text" placeholder="pl. https://example.com/callback" />
+      </div>
+
+      <!-- BOT PERMISSIONS (egyedi multi-select) -->
+      <div class="field">
+        <label>BOT PERMISSIONS (több kiválasztható)</label>
+        <div class="multi-wrapper">
+          <div id="fakeSelect" class="fake-select" tabindex="0" aria-haspopup="listbox" aria-expanded="false">
+            <div class="tags" id="selectedTags">Válassz jogosultságokat...</div>
+            <div style="opacity:0.8">▾</div>
+          </div>
+
+          <!-- Dropdown belső (checkbox lista) -->
+          <div id="permDropdown" class="dropdown" style="display:none;">
+            <!-- Permisszió lista generálva JS-el -->
+            <div id="permList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generate gomb -->
+      <div class="field">
+        <button id="generateBtn" class="btn">Generate OAuth2 Link</button>
+        <button id="clearBtn" class="btn ghost" style="margin-left:8px">Clear</button>
+      </div>
+
+      <footer>
+        <div class="note">Megjegyzés: a botot meghívhatóvá teszi a generált link — győződj meg róla, hogy a Client ID helyes, és hogy a Redirect URI regisztrálva van az alkalmazásodnál.</div>
+      </footer>
+    </div>
+
+    <!-- Jobb oldali panel: preview, copy, magyarázat -->
+    <aside class="right" aria-label="Preview és műveletek">
+      <div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <strong>Generált link</strong>
+          <span class="small">Kattintható + másolható</span>
+        </div>
+        <div id="preview" class="preview">(Itt jelenik meg a generált link)</div>
+      </div>
+
+      <div class="actions">
+        <button id="openBtn" class="btn ghost">Open in new tab</button>
+        <button id="copyBtn" class="btn">Copy link</button>
+      </div>
+
+      <div>
+        <strong>Gyors magyarázat</strong>
+        <p class="note" style="margin:8px 0 0 0">A Discord OAuth2 link lehetővé teszi, hogy a botot meghívd egy szerverre. A <code>client_id</code> a bot alkalmazás azonosítója, a <code>permissions</code> numerikus bitmask (összeadva a kiválasztott jogokat), a <code>redirect_uri</code> pedig a visszatérítési URL, amit az alkalmazásod használ az OAuth folyamathoz.</p>
+      </div>
+
+    </aside>
+  </div>
+
+  <script>
+    // ---------- Permissziók (név + bit érték) ----------
+    // Ha akarsz további engedélyeket, csak bővítsd a listát itt.
+    const PERMISSIONS = [
+      {name:'CREATE_INSTANT_INVITE', value:1},
+      {name:'KICK_MEMBERS', value:2},
+      {name:'BAN_MEMBERS', value:4},
+      {name:'ADMINISTRATOR', value:8},
+      {name:'MANAGE_CHANNELS', value:16},
+      {name:'MANAGE_GUILD', value:32},
+      {name:'ADD_REACTIONS', value:64},
+      {name:'VIEW_AUDIT_LOG', value:128},
+      {name:'STREAM', value:512},
+      {name:'VIEW_CHANNEL', value:1024},
+      {name:'SEND_MESSAGES', value:2048},
+      {name:'SEND_TTS_MESSAGES', value:4096},
+      {name:'MANAGE_MESSAGES', value:8192},
+      {name:'EMBED_LINKS', value:16384},
+      {name:'ATTACH_FILES', value:32768},
+      {name:'READ_MESSAGE_HISTORY', value:65536},
+      {name:'MENTION_EVERYONE', value:131072},
+      {name:'USE_EXTERNAL_EMOJIS', value:262144},
+      {name:'VIEW_GUILD_INSIGHTS', value:524288},
+      {name:'CONNECT', value:1048576},
+      {name:'SPEAK', value:2097152},
+      {name:'MUTE_MEMBERS', value:4194304},
+      {name:'DEAFEN_MEMBERS', value:8388608},
+      {name:'MOVE_MEMBERS', value:16777216},
+      {name:'USE_VAD', value:33554432},
+      {name:'CHANGE_NICKNAME', value:67108864},
+      {name:'MANAGE_NICKNAMES', value:134217728},
+      {name:'MANAGE_ROLES', value:268435456},
+      {name:'MANAGE_WEBHOOKS', value:536870912},
+      {name:'MANAGE_EMOJIS_AND_STICKERS', value:1073741824}
+    ];
+
+    // ---------- DOM referenciak ----------
+    const permListEl = document.getElementById('permList');
+    const permDropdown = document.getElementById('permDropdown');
+    const fakeSelect = document.getElementById('fakeSelect');
+    const selectedTags = document.getElementById('selectedTags');
+    const generateBtn = document.getElementById('generateBtn');
+    const preview = document.getElementById('preview');
+    const copyBtn = document.getElementById('copyBtn');
+    const openBtn = document.getElementById('openBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    // ---------- Segédfüggvények ----------
+    function createPermItem(p){
+      const wrapper = document.createElement('div');
+      wrapper.className = 'perm-item';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.dataset.value = p.value; // bit érték tárolása
+      checkbox.id = 'perm_' + p.value;
+
+      const label = document.createElement('label');
+      label.htmlFor = checkbox.id;
+      label.textContent = p.name + ' (' + p.value + ')';
+
+      wrapper.appendChild(checkbox);
+      wrapper.appendChild(label);
+
+      // Amikor kiválasztják, frissítsük a címkét
+      checkbox.addEventListener('change', updateTagsFromCheckboxes);
+
+      return wrapper;
+    }
+
+    function updateTagsFromCheckboxes(){
+      const checks = permListEl.querySelectorAll('input[type=checkbox]');
+      const chosen = [];
+      checks.forEach(cb=>{ if(cb.checked){
+        const txt = cb.nextSibling ? cb.nextSibling.textContent.split(' (')[0] : cb.dataset.value;
+        chosen.push(txt);
+      }});
+
+      if(chosen.length===0){
+        selectedTags.textContent = 'Válassz jogosultságokat...';
+        selectedTags.classList.remove('has-tags');
+      }else{
+        selectedTags.innerHTML = '';
+        chosen.forEach(c=>{
+          const span = document.createElement('span'); span.className='tag'; span.textContent=c; selectedTags.appendChild(span);
+        });
+      }
+    }
+
+    // Összes checkbox kiolvasása és permission érték kiszámolása
+    function calculatePermissionsValue(){
+      const checks = permListEl.querySelectorAll('input[type=checkbox]');
+      let total = 0;
+      checks.forEach(cb=>{ if(cb.checked){ total += Number(cb.dataset.value); }});
+      return total;
+    }
+
+    // ---------- Inicializálás: generáljuk a permission elemeket ----------
+    PERMISSIONS.forEach(p=>{
+      permListEl.appendChild(createPermItem(p));
+    });
+
+    // Dropdown viselkedés
+    fakeSelect.addEventListener('click', ()=>{
+      const open = permDropdown.style.display !== 'none';
+      permDropdown.style.display = open ? 'none' : 'block';
+      fakeSelect.setAttribute('aria-expanded', String(!open));
+    });
+
+    // Kattintáson kívüli bezárás
+    document.addEventListener('click', (e)=>{
+      if(!fakeSelect.contains(e.target) && !permDropdown.contains(e.target)){
+        permDropdown.style.display = 'none';
+        fakeSelect.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Generate gombra kattintás: link összeállítása
+    generateBtn.addEventListener('click', ()=>{
+      const clientId = document.getElementById('clientId').value.trim();
+      const redirectUri = document.getElementById('redirectUri').value.trim();
+
+      // Egyszerű validálás
+      if(!clientId){ alert('Kérlek add meg a Client ID-t.'); return; }
+      if(!redirectUri){ alert('Kérlek add meg a Redirect URI-t.'); return; }
+
+      const permissions = calculatePermissionsValue();
+
+      // Építsük fel a linket — használjunk encodeURIComponent-ot a redirect URI-hoz
+      const base = 'https://discord.com/oauth2/authorize';
+      const url = base + '?client_id=' + encodeURIComponent(clientId) + '&scope=bot&permissions=' + encodeURIComponent(permissions) + '&redirect_uri=' + encodeURIComponent(redirectUri);
+
+      // Mező frissítése
+      preview.innerHTML = `<a id="generatedLink" href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
+
+    // Copy link gomb
+    copyBtn.addEventListener('click', async ()=>{
+      const a = document.getElementById('generatedLink');
+      if(!a){ alert('Nincs generált link, előbb kattints a "Generate OAuth2 Link" gombra.'); return; }
+      try{
+        await navigator.clipboard.writeText(a.href);
+        copyBtn.textContent = 'Copied!';
+        setTimeout(()=>copyBtn.textContent='Copy link',1500);
+      }catch(e){
+        // Ha a clipboard API nem elérhető
+        const tmp = document.createElement('textarea'); tmp.value = a.href; document.body.appendChild(tmp); tmp.select(); document.execCommand('copy'); tmp.remove();
+        copyBtn.textContent = 'Copied!'; setTimeout(()=>copyBtn.textContent='Copy link',1500);
+      }
+    });
+
+    // Open in new tab (ugyanaz, mint rákattintani)
+    openBtn.addEventListener('click', ()=>{
+      const a = document.getElementById('generatedLink');
+      if(!a){ alert('Nincs generált link.'); return; }
+      window.open(a.href, '_blank', 'noopener');
+    });
+
+    // Clear gomb — visszaállítja az űrlapot
+    clearBtn.addEventListener('click', ()=>{
+      document.getElementById('clientId').value='';
+      document.getElementById('redirectUri').value='';
+      const checks = permListEl.querySelectorAll('input[type=checkbox]');
+      checks.forEach(cb=>cb.checked=false);
+      selectedTags.textContent='Válassz jogosultságokat...';
+      preview.textContent='(Itt jelenik meg a generált link)';
+    });
+
+    // Frissítsük a címkéket, ha a JS már futva van (alapérték)
+    updateTagsFromCheckboxes();
+
+    // -- Extra accessibility: Enter/Space a fakeSelect-en nyitja a dropdown-t
+    fakeSelect.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fakeSelect.click(); }
+    });
+
+  </script>
+</body>
+</html>
